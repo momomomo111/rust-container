@@ -7,6 +7,8 @@ services:
       dockerfile: docker/rust/Dockerfile
     tty: true
     working_dir: /workspace
+    ports:
+      - 8080:8080
     volumes:
       - .:/workspace
       - rust-target:/workspace/target
