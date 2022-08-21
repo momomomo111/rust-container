@@ -1,0 +1,5 @@
+CREATE TABLE user (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_name VARCHAR (64) NOT NULL,
+    image_url VARCHAR (64) NOT NULL
+);

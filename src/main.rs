@@ -1,8 +1,7 @@
 #[macro_use]
 extern crate diesel;
 
-use actix_web::{delete, put};
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{get, web, App, HttpServer, Responder};
 mod db;
 mod model;
 mod schema;
@@ -11,80 +10,28 @@ use diesel::ExpressionMethods;
 use diesel::QueryDsl;
 use diesel::RunQueryDsl;
 
+use crate::model::User;
+
 #[get("/users/{id}")]
 async fn get(db: web::Data<db::Pool>, path: web::Path<i32>) -> std::io::Result<impl Responder> {
     let conn = db.get().unwrap();
     let id = path.into_inner();
-    let user = schema::users::table
-        .select(schema::users::email)
-        .filter(schema::users::id.eq(id))
-        .load::<String>(&conn)
+    let message = schema::user::table
+        .select(schema::user::all_columns)
+        .filter(schema::user::id.eq(id))
+        .load::<User>(&conn)
         .expect("error");
 
-    Ok(web::Json(user))
-}
-
-#[post("/users")]
-async fn post(
-    db: web::Data<db::Pool>,
-    item: web::Json<model::User>,
-) -> std::io::Result<impl Responder> {
-    let conn = db.get().unwrap();
-    let new_user = model::User {
-        email: item.email.to_string(),
-    };
-    diesel::insert_into(schema::users::dsl::users)
-        .values(&new_user)
-        .execute(&conn)
-        .expect("Error saving new post");
-
-    Ok(HttpResponse::Created().body("get ok"))
-}
-
-#[put("/users/{id}")]
-async fn put(
-    db: web::Data<db::Pool>,
-    path: web::Path<i32>,
-    item: web::Json<model::User>,
-) -> std::io::Result<impl Responder> {
-    let id = path.into_inner();
-    let conn = db.get().unwrap();
-    let target = schema::users::dsl::users.filter(schema::users::dsl::id.eq(id));
-
-    diesel::update(target)
-        .set(schema::users::dsl::email.eq(item.email.to_string()))
-        .execute(&conn)
-        .expect("Error updating new post");
-
-    Ok(HttpResponse::Created().body("update ok"))
-}
-
-#[delete("/users/{id}")]
-async fn destroy(db: web::Data<db::Pool>, path: web::Path<i32>) -> std::io::Result<impl Responder> {
-    let id = path.into_inner();
-    let conn = db.get().unwrap();
-    let target = schema::users::dsl::users.filter(schema::users::dsl::id.eq(id));
-
-    diesel::delete(target)
-        .execute(&conn)
-        .expect("Error deleting new post");
-
-    Ok(HttpResponse::Created().body("Delete ok"))
+    Ok(web::Json(message))
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // db moduleからestablish_connection関数をimport
     let pool = db::establish_connection();
-
-    // app_dataを用いactix_webにdb poolをinject
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(pool.clone()))
             .service(get)
-            .service(post)
-            .service(put)
-            .service(destroy)
     })
     .bind(("0.0.0.0", 8080))?
     .run()
